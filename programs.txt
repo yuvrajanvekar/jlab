@@ -1,0 +1,223 @@
+import java.io.*;
+import java.util.Scanner;
+
+public class SimpleFileIO {
+    public static void main(String[] args) {
+        try (Scanner scanner = new Scanner(System.in)) {
+            // Write
+            System.out.print("Enter text to write: ");
+            String input = scanner.nextLine();
+            try (FileOutputStream fos = new FileOutputStream("data.txt")) {
+                fos.write(input.getBytes());
+                System.out.println("Data written to data.txt");
+            }
+
+            // Read
+            System.out.println("Reading data from file:");
+            try (FileInputStream fis = new FileInputStream("data.txt")) {
+                int ch;
+                while ((ch = fis.read()) != -1) {
+                    System.out.print((char) ch);
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}
+
+
+
+import java.io.*;
+
+public class BinaryDemo {
+    public static void main(String[] args) {
+        byte[] data = { 65, 66, 67, 68, 69 }; // A, B, C, D, E
+
+        try {
+            // Write Binary
+            try (FileOutputStream fout = new FileOutputStream("Binary.dat")) {
+                fout.write(data);
+                System.out.println("Binary data written.");
+            }
+
+            // Read Binary
+            try (FileInputStream fin = new FileInputStream("Binary.dat")) {
+                int i;
+                System.out.print("Reading: ");
+                while ((i = fin.read()) != -1) {
+                    System.out.print((char) i + " ");
+                }
+            }
+        } catch (IOException e) {
+            System.out.println(e);
+        }
+    }
+}
+
+
+
+
+import java.io.*;
+import java.util.Scanner;
+
+public class StreamMenu {
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        int choice;
+
+        do {
+            System.out.println("\n1. File Stream  2. ByteArray Stream  3. Buffered Stream  4. Exit");
+            System.out.print("Choice: ");
+            choice = scanner.nextInt();
+            scanner.nextLine(); // consume newline
+
+            try {
+                switch (choice) {
+                    case 1 -> fileOps(scanner);
+                    case 2 -> byteOps(scanner);
+                    case 3 -> bufferedOps(scanner);
+                    case 4 -> System.out.println("Exiting...");
+                    default -> System.out.println("Invalid choice.");
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        } while (choice != 4);
+    }
+
+    // 1. File Stream
+    static void fileOps(Scanner sc) throws IOException {
+        System.out.print("Enter text: ");
+        String text = sc.nextLine();
+        try (FileOutputStream fos = new FileOutputStream("file.txt")) {
+            fos.write(text.getBytes());
+        }
+        try (FileInputStream fis = new FileInputStream("file.txt")) {
+            System.out.print("Output: ");
+            int i; while ((i = fis.read()) != -1) System.out.print((char) i);
+        }
+    }
+
+    // 2. Byte Array Stream
+    static void byteOps(Scanner sc) throws IOException {
+        System.out.print("Enter text: ");
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        baos.write(sc.nextLine().getBytes());
+        
+        ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
+        System.out.print("Output: ");
+        int i; while ((i = bais.read()) != -1) System.out.print((char) i);
+    }
+
+    // 3. Buffered Stream (Faster I/O)
+    static void bufferedOps(Scanner sc) throws IOException {
+        System.out.print("Enter text: ");
+        try (BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream("buffer.txt"))) {
+            bos.write(sc.nextLine().getBytes());
+        }
+        try (BufferedInputStream bis = new BufferedInputStream(new FileInputStream("buffer.txt"))) {
+            System.out.print("Output: ");
+            int i; while ((i = bis.read()) != -1) System.out.print((char) i);
+        }
+    }
+}
+
+
+
+
+
+class SumArray {
+    int sum;
+
+    // synchronized ensures only one thread accesses this at a time
+    synchronized int sumArray(int[] nums) {
+        sum = 0;
+        for (int n : nums) {
+            sum += n;
+            System.out.println(Thread.currentThread().getName() + " running total: " + sum);
+            try { Thread.sleep(10); } catch (InterruptedException e) {}
+        }
+        return sum;
+    }
+}
+
+class MyThread implements Runnable {
+    Thread t;
+    static SumArray sa = new SumArray();
+    int[] a;
+
+    MyThread(String name, int[] nums) {
+        a = nums;
+        t = new Thread(this, name);
+        t.start();
+    }
+
+    public void run() {
+        System.out.println(t.getName() + " starting.");
+        int ans = sa.sumArray(a); // Synchronized call
+        System.out.println(t.getName() + " sum: " + ans);
+    }
+}
+
+public class SyncDemo {
+    public static void main(String[] args) throws InterruptedException {
+        int[] arr = {1, 2, 3, 4, 5};
+        MyThread t1 = new MyThread("Child #1", arr);
+        MyThread t2 = new MyThread("Child #2", arr);
+        
+        t1.t.join();
+        t2.t.join();
+        System.out.println("Main thread terminated.");
+    }
+}
+
+
+
+
+import java.util.LinkedList;
+import java.util.Queue;
+
+class Storage {
+    private final Queue<Integer> queue = new LinkedList<>();
+    private final int CAP = 5;
+
+    public synchronized void produce(int item) throws InterruptedException {
+        while (queue.size() == CAP) {
+            wait(); // Wait if full
+        }
+        queue.add(item);
+        System.out.println("Produced: " + item);
+        notifyAll(); // Notify consumer
+    }
+
+    public synchronized void consume() throws InterruptedException {
+        while (queue.isEmpty()) {
+            wait(); // Wait if empty
+        }
+        int item = queue.poll();
+        System.out.println("Consumed: " + item);
+        notifyAll(); // Notify producer
+    }
+}
+
+public class ProducerConsumer {
+    public static void main(String[] args) {
+        Storage storage = new Storage();
+
+        // Producer Thread
+        new Thread(() -> {
+            int i = 0;
+            try {
+                while (true) { storage.produce(++i); Thread.sleep(500); }
+            } catch (InterruptedException e) {}
+        }).start();
+
+        // Consumer Thread
+        new Thread(() -> {
+            try {
+                while (true) { storage.consume(); Thread.sleep(800); }
+            } catch (InterruptedException e) {}
+        }).start();
+    }
+}
